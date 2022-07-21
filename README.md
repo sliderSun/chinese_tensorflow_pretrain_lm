@@ -1,2 +1,2 @@
-# -chinese_tensorflow_pretrain_lm
+# chinese_tensorflow_pretrain_lm
 基于tensorflow的预训练模型
