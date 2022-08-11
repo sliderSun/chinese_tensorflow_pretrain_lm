@@ -29,14 +29,14 @@ corpus_paths = [
 
 # 其他配置
 sequence_length = 512
-batch_size = 4096
+batch_size = 64
 config_path = './model/bert_config.json'
 checkpoint_path = './model/bert_model.ckpt'  # 如果从零训练，就设为None
 learning_rate = 0.00176
 weight_decay_rate = 0.01
-num_warmup_steps = 3125
-num_train_steps = 125000
-steps_per_epoch = 10000
+num_warmup_steps = 312
+num_train_steps = 1250
+steps_per_epoch = 500
 grad_accum_steps = 16  # 大于1即表明使用梯度累积
 epochs = num_train_steps * grad_accum_steps // steps_per_epoch
 exclude_from_weight_decay = ['Norm', 'bias']
@@ -315,15 +315,24 @@ class ModelCheckpoint(keras.callbacks.Callback):
         # 先搞清楚对应情况，build_transformer_model 是用 load_weights_from_checkpoint 加载的。
         self.model.save_weights(model_saved_path, overwrite=True, save_format="tf")
 
+
+
+
 # 保存模型
 checkpoint = ModelCheckpoint()
 # 记录日志
 csv_logger = keras.callbacks.CSVLogger('training.log')
 
 # 模型训练
-train_model.fit(
-    dataset,
-    steps_per_epoch=steps_per_epoch,
-    epochs=epochs,
-    callbacks=[checkpoint, csv_logger],
-)
+# train_model.fit(
+#     dataset,
+#     steps_per_epoch=steps_per_epoch,
+#     epochs=epochs,
+#     callbacks=[checkpoint, csv_logger],
+# )
+
+
+
+bert, train_model, loss = build_transformer_model_with_lm()
+train_model.load_weights(model_saved_path)
+bert.save_weights_as_checkpoint(model_saved_path)
