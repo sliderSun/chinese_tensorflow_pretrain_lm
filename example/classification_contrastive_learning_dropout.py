@@ -18,6 +18,7 @@ from bert4keras.snippets import DataGenerator
 from bert4keras.layers import *
 from keras.losses import kullback_leibler_divergence as kld
 from keras_preprocessing.sequence import pad_sequences
+from keras.models import Model
 
 num_classes = 16
 maxlen = 64
@@ -32,7 +33,7 @@ dict_path = '../model/vocab.txt'
 
 def load_data(filename):
     D = []
-    with open(filename) as f:
+    with open(filename, encoding="utf-8") as f:
         for i, l in enumerate(f):
             l = json.loads(l)
             text, label, label_des = l['sentence'], l['label'], l['label_desc']

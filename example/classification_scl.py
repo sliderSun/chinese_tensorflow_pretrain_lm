@@ -37,7 +37,7 @@ dict_path = '../model/vocab.txt'
 
 def load_data(filename):
     D = []
-    with open(filename) as f:
+    with open(filename, encoding="utf-8") as f:
         for i, l in enumerate(f):
             l = json.loads(l)
             text, label, label_des = l['sentence'], l['label'], l['label_desc']
@@ -193,10 +193,10 @@ y_in = Input(shape=(None,))
 
 # scale_output = Dense(256, kernel_initializer=bert.initializer)(output)
 # logits = Dense(num_classes)(output)
-scl_output = SupervisedContrastiveLearning(alpha=0.05, T=0.05, output_idx=0)([output, y_in])
+scl_output = SupervisedContrastiveLearning(alpha=0.05, T=0.05, output_axis=[0])([output, y_in])
 
 clf_output = Dense(num_classes, activation='softmax')(output)
-clf_ce = CrossEntropy(output_idx=0, alpha=0.95)([clf_output, y_in])
+clf_ce = CrossEntropy(output_axis=[0], alpha=0.95)([clf_output, y_in])
 model = Model(bert.inputs, clf_output)
 model.summary()
 
