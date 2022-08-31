@@ -91,37 +91,49 @@ class TotalLoss(Loss):
     "计算两部分loss：分类交叉熵和对比loss"
 
     def compute_loss(self, inputs, mask=None):
-        loss = self.compute_loss_of_classification(inputs)
-        sim_loss = self.compute_loss_of_similarity(inputs)
-        return loss + sim_loss
+        cls_loss = self.sparse_categorical_crossentropy(inputs)
+        sim_loss = self.simcse_loss(inputs)
+        return cls_loss + sim_loss / 4 * 4
 
-    def compute_loss_of_classification(self, inputs, mask=None):
-        _, _, y_true, _, y_pred = inputs
-        loss = K.sparse_categorical_crossentropy(y_true, y_pred, from_logits=True)
-        self.add_metric(loss, 'cls_loss')
-        return loss
-
-    def compute_loss_of_similarity(self, inputs, mask=None):
-        # _, _, _, y_pred, _ = inputs
-        _, _, _, _, y_pred = inputs  # use last layer's logits
-        y_true = self.get_labels_of_similarity(y_pred)  # 构建标签
-        y_pred = K.l2_normalize(y_pred, axis=1)  # 句向量归一化
-        similarities = K.dot(y_pred, K.transpose(y_pred))  # 相似度矩阵
-        similarities = similarities - K.eye(K.shape(y_pred)[0]) * 1e12  # 排除对角线
-        similarities = similarities * 20  # scale
-        loss = K.categorical_crossentropy(
-            y_true, similarities, from_logits=True
-        )
-        self.add_metric(loss, 'sim_loss')
-        return loss
-
-    def get_labels_of_similarity(self, y_pred):
+    def simcse_loss(self, inputs):
+        """用于SimCSE训练的loss
+        """
+        # 构造标签
+        _, _, _, _, y_pred = inputs
         idxs = K.arange(0, K.shape(y_pred)[0])
         idxs_1 = idxs[None, :]
         idxs_2 = (idxs + 1 - idxs % 2 * 2)[:, None]
-        labels = K.equal(idxs_1, idxs_2)
-        labels = K.cast(labels, K.floatx())
-        return labels
+        y_true = K.equal(idxs_1, idxs_2)
+        y_true = K.cast(y_true, K.floatx())
+        # 计算相似度
+        y_pred = K.l2_normalize(y_pred, axis=1)
+        similarities = K.dot(y_pred, K.transpose(y_pred))
+        similarities = similarities - tf.eye(K.shape(y_pred)[0]) * 1e12
+        similarities = similarities * 20
+        loss = K.categorical_crossentropy(y_true, similarities, from_logits=True)
+        loss = K.mean(loss)
+        self.add_metric(loss, 'sim_loss')
+        return loss
+
+    def sparse_categorical_crossentropy(self, inputs, mask=None):
+        _, _, y_true, _, y_pred = inputs
+        y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
+        y_true = K.cast(y_true, 'int32')
+        loss = K.mean(K.sparse_categorical_crossentropy(y_true, y_pred))
+        self.add_metric(loss, 'cls_loss')
+        return loss
+
+    def crossentropy_with_rdrop(self, inputs, alpha=4):
+        """配合R-Drop的交叉熵损失
+        """
+        _, _, y_true, _, y_pred = inputs
+        y_true = K.reshape(y_true, K.shape(y_pred)[:-1])
+        y_true = K.cast(y_true, 'int32')
+        loss1 = K.mean(K.sparse_categorical_crossentropy(y_true, y_pred))
+        loss2 = kld(y_pred[::2], y_pred[1::2]) + kld(y_pred[1::2], y_pred[::2])
+        loss = loss1 + K.mean(loss2) / 4 * alpha
+        self.add_metric(loss, 'rdrop')
+        return loss
 
     def compute_kld(self, inputs, alpha=4, mask=None):
         _, _, _, y_pred = inputs
