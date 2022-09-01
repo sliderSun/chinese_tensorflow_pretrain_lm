@@ -172,8 +172,8 @@ class Evaluator(keras.callbacks.Callback):
 
 if __name__ == '__main__':
     # zero-shot
-    # zero_acc = evaluate(valid_generator)
-    # print('zero shot acc: ', zero_acc)
+    zero_acc = evaluate(valid_generator)
+    print('zero shot acc: ', zero_acc)
     # few shot
     evaluator = Evaluator()
     train_model.fit_generator(train_generator.forfit(),
