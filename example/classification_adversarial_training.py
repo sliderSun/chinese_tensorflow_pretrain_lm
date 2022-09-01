@@ -8,72 +8,30 @@
 import json
 import numpy as np
 from bert4keras.backend import keras, search_layer, K
-from bert4keras.tokenizers import Tokenizer
 from bert4keras.models import build_transformer_model
 from bert4keras.optimizers import Adam
-from bert4keras.snippets import sequence_padding, DataGenerator
+from bert4keras.tokenizers import Tokenizer
 from keras.layers import Lambda, Dense
 from tqdm import tqdm
 
-num_classes = 119
-maxlen = 128
-batch_size = 32
-
-# BERT base
-# config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
-# checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
-# dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
-config_path = '../model/bert_config.json'
-checkpoint_path = '../model/bert_model.ckpt'
-dict_path = '../model/vocab.txt'
-
-
-def load_data(filename):
-    """加载数据
-    单条格式：(文本, 标签id)
-    """
-    D = []
-    with open(filename) as f:
-        for i, l in enumerate(f):
-            l = json.loads(l)
-            text, label = l['sentence'], l['label']
-            D.append((text, int(label)))
-    return D
-
+np.random.seed(42)
+from config import *
+from data_utils import load_data, data_generator
 
 # 加载数据集
 train_data = load_data(
-    './tnews_public/train.json'
+    data_dict.get(task_name + "_train"), task_name
 )
 valid_data = load_data(
-    './tnews_public/dev.json'
+    data_dict.get(task_name + "_val"), task_name
 )
 
 # 建立分词器
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
-
-class data_generator(DataGenerator):
-    """数据生成器
-    """
-    def __iter__(self, random=False):
-        batch_token_ids, batch_segment_ids, batch_labels = [], [], []
-        for is_end, (text, label) in self.sample(random):
-            token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
-            batch_token_ids.append(token_ids)
-            batch_segment_ids.append(segment_ids)
-            batch_labels.append([label])
-            if len(batch_token_ids) == self.batch_size or is_end:
-                batch_token_ids = sequence_padding(batch_token_ids)
-                batch_segment_ids = sequence_padding(batch_segment_ids)
-                batch_labels = sequence_padding(batch_labels)
-                yield [batch_token_ids, batch_segment_ids], batch_labels
-                batch_token_ids, batch_segment_ids, batch_labels = [], [], []
-
-
 # 转换数据集
-train_generator = data_generator(train_data, batch_size)
-valid_generator = data_generator(valid_data, batch_size)
+train_generator = data_generator(train_data, task_name, tokenizer, batch_size=batch_size)
+val_generator = data_generator(valid_data, task_name, tokenizer, batch_size=batch_size)
 
 # 加载预训练模型
 bert = build_transformer_model(
@@ -94,7 +52,7 @@ model.summary()
 
 model.compile(
     loss='sparse_categorical_crossentropy',
-    optimizer=Adam(2e-5),
+    optimizer=Adam(lr),
     metrics=['sparse_categorical_accuracy'],
 )
 
@@ -123,7 +81,7 @@ def adversarial_training(model, embedding_name, epsilon=1):
 
     # 封装为函数
     inputs = (
-        model._feed_inputs + model._feed_targets + model._feed_sample_weights
+            model._feed_inputs + model._feed_targets + model._feed_sample_weights
     )  # 所有输入层
     embedding_gradients = K.function(
         inputs=inputs,
@@ -133,7 +91,7 @@ def adversarial_training(model, embedding_name, epsilon=1):
 
     def train_function(inputs):  # 重新定义训练函数
         grads = embedding_gradients(inputs)[0]  # Embedding梯度
-        delta = epsilon * grads / (np.sqrt((grads**2).sum()) + 1e-8)  # 计算扰动
+        delta = epsilon * grads / (np.sqrt((grads ** 2).sum()) + 1e-8)  # 计算扰动
         K.set_value(embeddings, K.eval(embeddings) + delta)  # 注入扰动
         outputs = old_train_function(inputs)  # 梯度下降
         K.set_value(embeddings, K.eval(embeddings) - delta)  # 删除扰动
@@ -159,11 +117,12 @@ def evaluate(data):
 class Evaluator(keras.callbacks.Callback):
     """评估与保存
     """
+
     def __init__(self):
         self.best_val_acc = 0.
 
     def on_epoch_end(self, epoch, logs=None):
-        val_acc = evaluate(valid_generator)
+        val_acc = evaluate(val_generator)
         if val_acc > self.best_val_acc:
             self.best_val_acc = val_acc
             model.save_weights('best_model.weights')
@@ -196,7 +155,7 @@ if __name__ == '__main__':
     model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
-        epochs=50,
+        epochs=epochs,
         callbacks=[evaluator]
     )
 

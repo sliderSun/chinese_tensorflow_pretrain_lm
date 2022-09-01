@@ -8,7 +8,6 @@
 """
 ref: [Supervised Contrastive Learning for Pre-trained Language Model Fine-tuning](http://arxiv.org/abs/2011.01403)
 """
-import json
 
 import keras
 from bert4keras.backend import K
@@ -21,37 +20,19 @@ from keras.layers import Input, Lambda, Dense
 from keras.models import Model
 from keras_preprocessing.sequence import pad_sequences
 from tqdm import tqdm
+import numpy as np
 
-num_classes = 16
-maxlen = 128
-batch_size = 32
-epochs = 10
-num_hidden_layers = 12
-lr = 1e-5
+np.random.seed(42)
 
-# BERT base
-config_path = '../model/bert_config.json'
-checkpoint_path = '../model/bert_model.ckpt'
-dict_path = '../model/vocab.txt'
-
-
-def load_data(filename):
-    D = []
-    with open(filename, encoding="utf-8") as f:
-        for i, l in enumerate(f):
-            l = json.loads(l)
-            text, label, label_des = l['sentence'], l['label'], l['label_desc']
-            label = int(label) - 100 if int(label) < 105 else int(label) - 101
-            D.append((text, int(label), label_des))
-    return D
-
+from config import *
+from data_utils import load_data
 
 # 加载数据集
 train_data = load_data(
-    './tnews_public/train.json'
+    data_dict.get(task_name + "_train"), task_name
 )
 valid_data = load_data(
-    './tnews_public/dev.json'
+    data_dict.get(task_name + "_val"), task_name
 )
 
 # tokenizer
@@ -92,8 +73,8 @@ class data_generator(SubDataGenerator):
                 batch_token_ids, batch_segment_ids, batch_labels = [], [], []
 
 
-train_generator = data_generator(data=train_data, batch_size=batch_size)
-val_generator = data_generator(valid_data, batch_size)
+train_generator = data_generator(train_data, batch_size=batch_size)
+val_generator = data_generator(valid_data, batch_size=batch_size)
 
 
 def evaluate(data):
@@ -201,7 +182,9 @@ model = Model(bert.inputs, clf_output)
 model.summary()
 
 train_model = Model(bert.inputs + [y_in], [scl_output, clf_ce])
-train_model.compile(optimizer=Adam(lr))
+train_model.compile(
+    optimizer=Adam(lr)
+)
 
 if __name__ == '__main__':
     evaluator = Evaluator()

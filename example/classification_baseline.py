@@ -7,72 +7,31 @@ tnews baseline:
 bert-12 acc: 56.6
 tnews: (https://github.com/CLUEbenchmark/CLUE)
 """
-import json
 from bert4keras.layers import *
 from bert4keras.models import build_transformer_model
 from bert4keras.optimizers import Adam
-from bert4keras.snippets import DataGenerator
 from bert4keras.tokenizers import Tokenizer
-from keras_preprocessing.sequence import pad_sequences
+from keras.models import Model
 from tqdm import tqdm
+import numpy as np
 
-num_classes = 16
-maxlen = 64
-batch_size = 32
-epochs = 5
-num_hidden_layers = 12
-lr = 1e-5
-
-# BERT base
-config_path = '../model/bert_config.json'
-checkpoint_path = '../model/bert_model.ckpt'
-dict_path = '../model/vocab.txt'
-
-
-def load_data(filename):
-    D = []
-    with open(filename) as f:
-        for i, l in enumerate(f):
-            l = json.loads(l)
-            text, label, label_des = l['sentence'], l['label'], l['label_desc']
-            label = int(label) - 100 if int(label) < 105 else int(label) - 101
-            D.append((text, int(label), label_des))
-    return D
-
+np.random.seed(42)
+from config import *
+from data_utils import load_data, data_generator
 
 # 加载数据集
 train_data = load_data(
-    './tnews_public/train.json'
+    data_dict.get(task_name + "_train"), task_name
 )
 valid_data = load_data(
-    './tnews_public/dev.json'
+    data_dict.get(task_name + "_val"), task_name
 )
 
 # tokenizer
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
-
-class data_generator(DataGenerator):
-    def __iter__(self, shuffle=False):
-        batch_token_ids, batch_segment_ids, batch_labels = [], [], []
-        for is_end, (text, label, label_desc) in self.sample(shuffle):
-            token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
-            batch_token_ids.append(token_ids)
-            batch_segment_ids.append(segment_ids)
-            batch_labels.append([int(label)])
-
-            if len(batch_token_ids) == self.batch_size or is_end:
-                batch_token_ids = pad_sequences(batch_token_ids)
-                batch_segment_ids = pad_sequences(batch_segment_ids)
-                batch_labels = pad_sequences(batch_labels)
-
-                yield [batch_token_ids, batch_segment_ids], batch_labels
-
-                batch_token_ids, batch_segment_ids, batch_labels = [], [], []
-
-
-train_generator = data_generator(data=train_data, batch_size=batch_size)
-val_generator = data_generator(valid_data, batch_size)
+train_generator = data_generator(train_data, task_name, tokenizer, batch_size=batch_size)
+val_generator = data_generator(valid_data, task_name, tokenizer, batch_size=batch_size)
 
 # build model
 bert = build_transformer_model(config_path=config_path,
@@ -86,7 +45,7 @@ model.summary()
 
 model.compile(loss='sparse_categorical_crossentropy',
               optimizer=Adam(lr),
-              metrics=['acc'])
+              metrics=['sparse_categorical_accuracy'])
 
 
 def evaluate(data):

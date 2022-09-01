@@ -5,6 +5,8 @@
 
 import json
 import numpy as np
+
+np.random.seed(42)
 from bert4keras.backend import keras, search_layer, K
 from bert4keras.tokenizers import Tokenizer
 from bert4keras.models import build_transformer_model
@@ -13,40 +15,24 @@ from bert4keras.snippets import sequence_padding, DataGenerator
 from keras.layers import Lambda, Dense
 from keras.losses import kullback_leibler_divergence as kld
 from tqdm import tqdm
+from config import *
+from data_utils import load_data
 
+# labels = [
+#     "100", "101", "102", "103", "104", "106", "107", "108", "109", "110", "112",
+#     "113", "114", "115", "116"
+# ]
 labels = [
-    "100", "101", "102", "103", "104", "106", "107", "108", "109", "110", "112",
-    "113", "114", "115", "116"
+    "0", "1", "2", "3", "4", "6", "5", "7", "8", "9", "10", "11",
+    "12", "13", "14", "15"
 ]
-num_classes = len(labels)
-maxlen = 128
-batch_size = 32
-
-# BERT base
-config_path = '../model/bert_config.json'
-checkpoint_path = '../model/bert_model.ckpt'
-dict_path = '../model/vocab.txt'
-# config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
-# checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
-# dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
-
-
-def load_data(filename):
-    D = []
-    with open(filename) as f:
-        for i, l in enumerate(f):
-            l = json.loads(l)
-            text, label = l['sentence'], l['label']
-            D.append((text, labels.index(label)))
-    return D
-
 
 # 加载数据集
 train_data = load_data(
-    './tnews_public/train.json'
+    data_dict.get(task_name + "_train"), task_name
 )
 valid_data = load_data(
-    './tnews_public/dev.json'
+    data_dict.get(task_name + "_val"), task_name
 )
 
 # 建立分词器
@@ -59,7 +45,7 @@ class data_generator(DataGenerator):
 
     def __iter__(self, random=False):
         batch_token_ids, batch_segment_ids, batch_labels = [], [], []
-        for is_end, (text, label) in self.sample(random):
+        for is_end, (text, label, _) in self.sample(random):
             token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
             for i in range(2):
                 batch_token_ids.append(token_ids)
@@ -108,7 +94,7 @@ def crossentropy_with_rdrop(y_true, y_pred, alpha=4):
 
 model.compile(
     loss=crossentropy_with_rdrop,
-    optimizer=Adam(2e-5),
+    optimizer=Adam(lr),
     metrics=['sparse_categorical_accuracy'],
 )
 
@@ -164,7 +150,7 @@ if __name__ == '__main__':
     model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
-        epochs=50,
+        epochs=epochs,
         callbacks=[evaluator]
     )
 
