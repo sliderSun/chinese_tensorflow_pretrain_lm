@@ -5,23 +5,21 @@
 @desc:
 """
 """
-残差式attention RealFormer实验，由于结构与BERT上有差异，直接加载BERT权重后fine-tuning对比是不公平的，不过为了简单，
-所以选了pet这种“预训练”+“fine-tuning" 一体的模型结构实验，此外，为了让模型有更多的机会调整权重，epoch设置的大一些
-best acc: 56.73
+Pattern-Exploiting：将分类任务转换为完形填空
+ref:
+ [Exploiting Cloze Questions for Few Shot Text Classification and Natural Language Inference](https://arxiv.org/pdf/2001.07676.pdf)
+ [It’s Not Just Size That Matters: Small Language Models Are Also Few-Shot Learners](https://arxiv.org/pdf/2009.07118.pdf)
 """
 
 from bert4keras.layers import *
 from bert4keras.models import build_transformer_model
-from bert4keras.optimizers import *
-from bert4keras.snippets import DataGenerator, sequence_padding
+from bert4keras.optimizers import Adam
+from bert4keras.snippets import sequence_padding, DataGenerator
 from bert4keras.tokenizers import Tokenizer
-from keras.models import Model
 from tqdm import tqdm
-import numpy as np
-
-np.random.seed(42)
-from example.config import *
-from example.data_utils import load_data
+from keras.models import Model
+from config import *
+from data_utils import load_data
 
 desc2label = {
     'news_agriculture': '农业',
@@ -44,10 +42,10 @@ labels = list(desc2label.values())
 
 # 加载数据集
 train_data = load_data(
-    './tnews_public/train.json', task_name
+    data_dict.get(task_name + "_train"), task_name
 )
 valid_data = load_data(
-    './tnews_public/dev.json', task_name
+    data_dict.get(task_name + "_val"), task_name
 )
 
 tokenizer = Tokenizer(dict_path, do_lower_case=True)
@@ -111,6 +109,12 @@ class data_generator(DataGenerator):
                 batch_tokens, batch_segments, batch_targets = [], [], []
 
 
+# 构造半监督数据
+labeled_num = 2000
+unlabeled_data = [(t[0], t[1], '无标签') for t in train_data[labeled_num:]]
+# train_data = train_data[:labeled_num] + unlabeled_data
+train_data = train_data[:labeled_num]
+
 train_generator = data_generator(train_data, batch_size)
 valid_generator = data_generator(valid_data, batch_size)
 
@@ -130,8 +134,7 @@ class CrossEntropy(Loss):
 
 model = build_transformer_model(config_path=config_path,
                                 checkpoint_path=checkpoint_path,
-                                with_mlm=True,
-                                with_residual_attention=True)
+                                with_mlm=True)
 
 target_in = Input(shape=(None,))
 output = CrossEntropy(1)([target_in, model.output])
@@ -166,7 +169,7 @@ class Evaluator(keras.callbacks.Callback):
         acc = evaluate(valid_generator)
         if acc > self.best_acc:
             self.best_acc = acc
-            self.model.save_weights('best_pet_realformer.weights')
+            self.model.save_weights('best_pet_model.weights')
         print('acc :{}, best acc:{}'.format(acc, self.best_acc))
 
 
