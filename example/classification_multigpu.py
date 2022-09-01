@@ -8,6 +8,8 @@ os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
 
 import json
 import numpy as np
+
+np.random.seed(42)
 import tensorflow as tf
 from bert4keras.backend import keras, K
 from bert4keras.tokenizers import Tokenizer
@@ -17,38 +19,15 @@ from bert4keras.snippets import sequence_padding, DataGenerator, to_array
 from keras.layers import Lambda, Dense
 from tqdm import tqdm
 
-num_classes = 119
-maxlen = 128
-batch_size = 32
-
-# BERT base
-# config_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_config.json'
-# checkpoint_path = '/root/kg/bert/chinese_L-12_H-768_A-12/bert_model.ckpt'
-# dict_path = '/root/kg/bert/chinese_L-12_H-768_A-12/vocab.txt'
-config_path = '../model/bert_config.json'
-checkpoint_path = '../model/bert_model.ckpt'
-dict_path = '../model/vocab.txt'
-
-
-def load_data(filename):
-    """加载数据
-    单条格式：(文本, 标签id)
-    """
-    D = []
-    with open(filename) as f:
-        for i, l in enumerate(f):
-            l = json.loads(l)
-            text, label = l['sentence'], l['label']
-            D.append((text, int(label)))
-    return D
-
+from config import *
+from data_utils import load_data
 
 # 加载数据集
 train_data = load_data(
-    './tnews_public/train.json'
+    data_dict.get(task_name + "_train"), task_name
 )
 valid_data = load_data(
-    './tnews_public/dev.json'
+    data_dict.get(task_name + "_val"), task_name
 )
 
 # 建立分词器
@@ -58,8 +37,9 @@ tokenizer = Tokenizer(dict_path, do_lower_case=True)
 class data_generator(DataGenerator):
     """数据生成器
     """
+
     def __iter__(self, random=False):
-        for is_end, (text, label) in self.sample(random):
+        for is_end, (text, label, _) in self.sample(random):
             token_ids, segment_ids = tokenizer.encode(text, maxlen=maxlen)
             yield [token_ids, segment_ids], [[label]]  # 返回一条样本
 
@@ -91,7 +71,7 @@ with strategy.scope():  # 调用该策略
     model = keras.models.Model(bert.model.input, output)
     model.compile(
         loss='sparse_categorical_crossentropy',
-        optimizer=Adam(2e-5),
+        optimizer=Adam(lr),
         metrics=['sparse_categorical_accuracy'],
     )
     model.summary()
@@ -101,6 +81,7 @@ with strategy.scope():  # 调用该策略
 class Evaluator(keras.callbacks.Callback):
     """评估与保存
     """
+
     def __init__(self):
         self.best_val_acc = 0.
 
@@ -153,7 +134,7 @@ if __name__ == '__main__':
     model.fit(
         train_dataset,
         steps_per_epoch=len(train_generator),
-        epochs=10,
+        epochs=epochs,
         validation_data=valid_dataset,
         validation_steps=len(valid_generator),
         callbacks=[evaluator]

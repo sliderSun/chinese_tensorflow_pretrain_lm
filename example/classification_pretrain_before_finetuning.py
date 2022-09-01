@@ -10,48 +10,26 @@ import os
 
 os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
 
-import json
 from tqdm import tqdm
 import jieba
+import numpy as np
 
+np.random.seed(42)
 from bert4keras.models import build_transformer_model, Model
 from bert4keras.optimizers import *
 from bert4keras.snippets import DataGenerator
 from bert4keras.tokenizers import Tokenizer
 from keras_preprocessing.sequence import pad_sequences
 from bert4keras.layers import *
-
-num_classes = 16
-maxlen = 64
-batch_size = 32
-pretrain_epochs = 10
-fine_tune_epochs = 5
-pretrain_lr = 5e-5
-fine_tune_lr = 1e-5
-
-# BERT base
-config_path = '../model/bert_config.json'
-checkpoint_path = '../model/bert_model.ckpt'
-dict_path = '../model/vocab.txt'
-
-
-def load_data(filename):
-    D = []
-    with open(filename) as f:
-        for i, l in enumerate(f):
-            l = json.loads(l)
-            text, label, label_des = l['sentence'], l['label'], l['label_desc']
-            label = int(label) - 100 if int(label) < 105 else int(label) - 101
-            D.append((text, int(label), label_des))
-    return D
-
+from config import *
+from data_utils import load_data
 
 # 加载数据集
 train_data = load_data(
-    './tnews_public/train.json'
+    data_dict.get(task_name + "_train"), task_name
 )
 valid_data = load_data(
-    './tnews_public/dev.json'
+    data_dict.get(task_name + "_val"), task_name
 )
 
 # tokenizer
@@ -342,7 +320,7 @@ if __name__ == '__main__':
 
     model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=Adam(fine_tune_lr),
-                  metrics=['acc'])
+                  metrics=['sparse_categorical_accuracy'])
 
     evaluator = Evaluator()
     model.fit_generator(train_generator.forfit(),
