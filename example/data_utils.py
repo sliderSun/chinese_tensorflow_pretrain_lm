@@ -8,7 +8,7 @@ import json
 from tqdm import tqdm
 from bert4keras.snippets import DataGenerator, sequence_padding
 
-from example.config import maxlen
+from config import maxlen
 
 
 def load_data(filename, task_name="single", file_type="json", split='\t'):
