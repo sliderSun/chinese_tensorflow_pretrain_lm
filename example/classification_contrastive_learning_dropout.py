@@ -4,59 +4,33 @@
 @File : classification_contrastive_learning_dropout.py 
 @desc:
 """
-
 """
 用dropout 做数据增强，构造样本的不同view，来通过增加对比学习增强分类模型的性能
 """
-import json
+from bert4keras.snippets import DataGenerator, sequence_padding
+import numpy as np
 from tqdm import tqdm
 
-from bert4keras.tokenizers import Tokenizer, load_vocab
+np.random.seed(42)
+from bert4keras.tokenizers import Tokenizer
 from bert4keras.models import build_transformer_model
 from bert4keras.optimizers import *
-from bert4keras.snippets import DataGenerator
 from bert4keras.layers import *
 from keras.losses import kullback_leibler_divergence as kld
-from keras_preprocessing.sequence import pad_sequences
 from keras.models import Model
-
-num_classes = 16
-maxlen = 64
-batch_size = 72
-
-epochs = 5
-# BERT base
-config_path = '../model/bert_config.json'
-checkpoint_path = '../model/bert_model.ckpt'
-dict_path = '../model/vocab.txt'
-
-
-def load_data(filename):
-    D = []
-    with open(filename, encoding="utf-8") as f:
-        for i, l in enumerate(f):
-            l = json.loads(l)
-            text, label, label_des = l['sentence'], l['label'], l['label_desc']
-            label = int(label) - 100 if int(label) < 105 else int(label) - 101
-            D.append((text, int(label), label_des))
-    return D
-
+from config import *
+from data_utils import load_data
 
 # 加载数据集
 train_data = load_data(
-    './tnews_public/train.json'
+    data_dict.get(task_name + "_train"), task_name
 )
 valid_data = load_data(
-    './tnews_public/dev.json'
+    data_dict.get(task_name + "_val"), task_name
 )
 
-# 加载并精简词表，建立分词器
-token_dict, keep_tokens = load_vocab(
-    dict_path=dict_path,
-    simplified=True,
-    startswith=['[PAD]', '[UNK]', '[CLS]', '[SEP]'],
-)
-tokenizer = Tokenizer(token_dict, do_lower_case=True)
+# 建立分词器
+tokenizer = Tokenizer(dict_path, do_lower_case=True)
 
 
 class data_generator(DataGenerator):
@@ -74,9 +48,9 @@ class data_generator(DataGenerator):
                 batch_labels.append([label])
 
             if len(batch_token_ids) == self.batch_size * 2 or is_end:
-                batch_token_ids = pad_sequences(batch_token_ids)
-                batch_segment_ids = pad_sequences(batch_segment_ids)
-                batch_labels = pad_sequences(batch_labels)
+                batch_token_ids = sequence_padding(batch_token_ids)
+                batch_segment_ids = sequence_padding(batch_segment_ids)
+                batch_labels = sequence_padding(batch_labels)
 
                 yield [batch_token_ids, batch_segment_ids, batch_labels], None
                 batch_token_ids, batch_segment_ids, batch_labels = [], [], []
@@ -145,8 +119,8 @@ class TotalLoss(Loss):
 
 bert = build_transformer_model(checkpoint_path=checkpoint_path,
                                config_path=config_path,
-                               keep_tokens=keep_tokens,
                                dropout_rate=0.3,
+                               return_keras_model=False
                                )
 
 label_inputs = Input(shape=(None,), name='label_inputs')
@@ -158,7 +132,7 @@ output = TotalLoss(4)(bert.inputs + [label_inputs, pooler, x])
 model = Model(bert.inputs + [label_inputs], output)
 classifier = Model(bert.inputs, x)
 
-model.compile(optimizer=Adam(2e-5), metrics=['acc'])
+model.compile(optimizer=Adam(lr), metrics=['sparse_categorical_accuracy'])
 model.summary()
 
 
@@ -190,7 +164,7 @@ class Evaluator(keras.callbacks.Callback):
 
 if __name__ == '__main__':
     evaluator = Evaluator()
-    model.fit_generator(train_generator.forfit(),
-                        steps_per_epoch=len(train_generator),
-                        epochs=epochs,
-                        callbacks=[evaluator])
+    model.fit(train_generator.forfit(),
+              steps_per_epoch=len(train_generator),
+              epochs=epochs,
+              callbacks=[evaluator])
