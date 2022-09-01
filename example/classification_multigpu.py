@@ -11,11 +11,11 @@ import numpy as np
 
 np.random.seed(42)
 import tensorflow as tf
-from bert4keras.backend import keras, K
+from bert4keras.backend import keras
 from bert4keras.tokenizers import Tokenizer
 from bert4keras.models import build_transformer_model
 from bert4keras.optimizers import Adam
-from bert4keras.snippets import sequence_padding, DataGenerator, to_array
+from bert4keras.snippets import DataGenerator, to_array
 from keras.layers import Lambda, Dense
 from tqdm import tqdm
 
