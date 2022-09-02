@@ -5,6 +5,7 @@
 
 import json
 import numpy as np
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 np.random.seed(42)
 from bert4keras.backend import keras, search_layer, K
@@ -16,7 +17,7 @@ from keras.layers import Lambda, Dense
 from keras.losses import kullback_leibler_divergence as kld
 from tqdm import tqdm
 from config import *
-from data_utils import load_data
+from data_utils import load_data, Evaluator
 
 # labels = [
 #     "100", "101", "102", "103", "104", "106", "107", "108", "109", "110", "112",
@@ -127,9 +128,9 @@ def predict_to_file(in_file, out_file):
 
 if __name__ == '__main__':
 
-    # evaluator = Evaluator()
+    # evaluator = Evaluator(valid_generator)
     callbacks = [
-        Evaluator(),
+        Evaluator(valid_generator),
         EarlyStopping(
             monitor='val_acc',
             patience=5,

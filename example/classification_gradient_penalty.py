@@ -106,9 +106,9 @@ def predict_to_file(in_file, out_file):
 
 if __name__ == '__main__':
 
-    # evaluator = Evaluator()
+    # evaluator = Evaluator(val_generator)
     callbacks = [
-        Evaluator(),
+        Evaluator(val_generator),
         EarlyStopping(
             monitor='val_acc',
             patience=5,

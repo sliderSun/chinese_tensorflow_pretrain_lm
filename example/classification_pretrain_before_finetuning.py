@@ -299,9 +299,9 @@ if __name__ == '__main__':
                   optimizer=Adam(fine_tune_lr),
                   metrics=['sparse_categorical_accuracy'])
 
-    # evaluator = Evaluator()
+    # evaluator = Evaluator(val_generator)
     callbacks = [
-        Evaluator(),
+        Evaluator(val_generator),
         EarlyStopping(
             monitor='val_acc',
             patience=5,

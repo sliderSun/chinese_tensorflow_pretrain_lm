@@ -114,10 +114,11 @@ class Evaluator(keras.callbacks.Callback):
     """评估与保存
     """
 
-    def __init__(self):
+    def __init__(self, val_generator):
         self.best_val_acc = 0.
         self.best_val_f1_micro = 0.
         self.best_val_f1_macro = 0.
+        self.val_generator = val_generator
 
     def evaluate(self, data):
         total, right = 0., 0.
@@ -136,10 +137,10 @@ class Evaluator(keras.callbacks.Callback):
         return right / total, f1_micro, f1_macro
 
     def on_epoch_end(self, epoch, logs=None):
-        val_acc, f1_micro, f1_macro = self.evaluate(val_generator)
+        val_acc, f1_micro, f1_macro = self.evaluate(self.val_generator)
         if val_acc > self.best_val_acc:
             self.best_val_acc = val_acc
-            model.save_weights('best_model.weights')
+            self.model.save_weights('best_model.weights')
         if f1_micro > self.best_val_f1_micro:
             self.best_val_f1_micro = f1_micro
         if f1_macro > self.best_val_f1_macro:

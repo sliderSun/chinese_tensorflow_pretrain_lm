@@ -60,9 +60,9 @@ model.compile(loss='sparse_categorical_crossentropy',
               metrics=['sparse_categorical_accuracy'])
 
 if __name__ == '__main__':
-    # evaluator = Evaluator()
+    # evaluator = Evaluator(val_generator)
     callbacks = [
-        Evaluator(),
+        Evaluator(val_generator),
         EarlyStopping(
             monitor='val_acc',
             patience=5,

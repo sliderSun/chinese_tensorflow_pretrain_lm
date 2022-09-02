@@ -249,9 +249,9 @@ adversarial_training(model, 'Embedding-Token', 0.5)
 
 
 if __name__ == '__main__':
-    # evaluator = Evaluator()
+    # evaluator = Evaluator(valid_generator)
     callbacks = [
-        Evaluator(),
+        Evaluator(valid_generator),
         EarlyStopping(
             monitor='val_acc',
             patience=5,
