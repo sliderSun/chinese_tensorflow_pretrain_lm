@@ -16,7 +16,6 @@ import os
 
 os.environ['TF_KERAS'] = '1'  # 使用tf.keras
 
-from tqdm import tqdm
 import numpy as np
 
 np.random.seed(42)
