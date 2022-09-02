@@ -144,7 +144,7 @@ class Evaluator(keras.callbacks.Callback):
         if f1_micro > self.best_val_f1_micro:
             self.best_val_f1_micro = f1_micro
         if f1_macro > self.best_val_f1_macro:
-            self.best_val_f1_micro = f1_macro
+            self.best_val_f1_macro = f1_macro
         print(
             u'val_acc: %.5f, best_val_acc: %.5f\n' %
             (val_acc, self.best_val_acc)
