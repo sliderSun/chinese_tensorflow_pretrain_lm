@@ -109,24 +109,6 @@ def evaluate(data):
     return right / total
 
 
-class Evaluator(keras.callbacks.Callback):
-    """评估与保存
-    """
-
-    def __init__(self):
-        self.best_val_acc = 0.
-
-    def on_epoch_end(self, epoch, logs=None):
-        val_acc = evaluate(valid_generator)
-        if val_acc > self.best_val_acc:
-            self.best_val_acc = val_acc
-            model.save_weights('best_model.weights')
-        print(
-            u'val_acc: %.5f, best_val_acc: %.5f\n' %
-            (val_acc, self.best_val_acc)
-        )
-
-
 def predict_to_file(in_file, out_file):
     """输出预测结果到文件
     结果文件可以提交到 https://www.cluebenchmarks.com 评测。
@@ -145,13 +127,35 @@ def predict_to_file(in_file, out_file):
 
 if __name__ == '__main__':
 
-    evaluator = Evaluator()
-
+    # evaluator = Evaluator()
+    callbacks = [
+        Evaluator(),
+        EarlyStopping(
+            monitor='val_acc',
+            patience=5,
+            verbose=1,
+            mode='max'),
+        ReduceLROnPlateau(
+            monitor='val_acc',
+            factor=0.5,
+            patience=2,
+            verbose=1,
+            min_lr=1e-5,
+            mode='max'),
+        # ModelCheckpoint(
+        #     f'best_model.h5',
+        #     monitor='val_acc',
+        #     save_weights_only=True,
+        #     save_best_only=True,
+        #     verbose=1,
+        #     mode='max'),
+    ]
     model.fit(
         train_generator.forfit(),
         steps_per_epoch=len(train_generator),
         epochs=epochs,
-        callbacks=[evaluator]
+        # callbacks=[evaluator],
+        callbacks=callbacks
     )
 
 else:

@@ -7,17 +7,17 @@ tnews baseline:
 bert-12 acc: 56.6
 tnews: (https://github.com/CLUEbenchmark/CLUE)
 """
+import numpy as np
 from bert4keras.layers import *
 from bert4keras.models import build_transformer_model
 from bert4keras.optimizers import Adam
 from bert4keras.tokenizers import Tokenizer
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from keras.models import Model
-from tqdm import tqdm
-import numpy as np
 
 np.random.seed(42)
 from config import *
-from data_utils import load_data, data_generator
+from data_utils import load_data, data_generator, Evaluator
 
 # 加载数据集
 train_data = load_data(
@@ -47,35 +47,36 @@ model.compile(loss='sparse_categorical_crossentropy',
               optimizer=Adam(lr),
               metrics=['sparse_categorical_accuracy'])
 
-
-def evaluate(data):
-    total, right = 0., 0.
-    for x_true, y_true in tqdm(data):
-        y_pred = model.predict(x_true).argmax(axis=1)
-        y_true = y_true[:, 0]
-        total += len(y_true)
-        right += (y_true == y_pred).sum()
-
-    return right / total
-
-
-class Evaluator(keras.callbacks.Callback):
-    def __init__(self):
-        self.best_acc = 0.
-
-    def on_epoch_end(self, epoch, logs=None):
-        acc = evaluate(val_generator)
-        if acc > self.best_acc:
-            self.best_acc = acc
-            self.model.save_weights('best_baseline.weights')
-        print('acc: {}, best acc: {}'.format(acc, self.best_acc))
-
-
 if __name__ == '__main__':
-    evaluator = Evaluator()
-    model.fit_generator(train_generator.forfit(),
-                        steps_per_epoch=len(train_generator),
-                        epochs=epochs,
-                        callbacks=[evaluator])
+    # evaluator = Evaluator()
+    callbacks = [
+        Evaluator(),
+        EarlyStopping(
+            monitor='val_acc',
+            patience=5,
+            verbose=1,
+            mode='max'),
+        ReduceLROnPlateau(
+            monitor='val_acc',
+            factor=0.5,
+            patience=2,
+            verbose=1,
+            min_lr=1e-5,
+            mode='max'),
+        # ModelCheckpoint(
+        #     f'best_model.h5',
+        #     monitor='val_acc',
+        #     save_weights_only=True,
+        #     save_best_only=True,
+        #     verbose=1,
+        #     mode='max'),
+    ]
+    model.fit_generator(
+        train_generator.forfit(),
+        steps_per_epoch=len(train_generator),
+        epochs=epochs,
+        # callbacks=[evaluator],
+        callbacks=callbacks
+    )
 else:
     model.load_weights('best_baseline.weights')

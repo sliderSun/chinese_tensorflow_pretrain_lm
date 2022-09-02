@@ -7,6 +7,7 @@ best acc: 0.573 ， 比直接fine-tuning高1.+
 环境：tf1.X + tf.keras
 """
 import os
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
 
@@ -22,7 +23,7 @@ from bert4keras.tokenizers import Tokenizer
 from keras_preprocessing.sequence import pad_sequences
 from bert4keras.layers import *
 from config import *
-from data_utils import load_data
+from data_utils import load_data, Evaluator
 
 # 加载数据集
 train_data = load_data(
@@ -266,30 +267,6 @@ class data_generator(DataGenerator):
 train_generator = data_generator(data=train_data, batch_size=batch_size)
 val_generator = data_generator(valid_data, batch_size)
 
-
-def evaluate(data):
-    total, right = 0., 0.
-    for x_true, y_true in tqdm(data):
-        y_pred = model.predict(x_true).argmax(axis=1)
-        y_true = y_true[:, 0]
-        total += len(y_true)
-        right += (y_true == y_pred).sum()
-
-    return right / total
-
-
-class Evaluator(keras.callbacks.Callback):
-    def __init__(self):
-        self.best_acc = 0.
-
-    def on_epoch_end(self, epoch, logs=None):
-        acc = evaluate(val_generator)
-        if acc > self.best_acc:
-            self.best_acc = acc
-            self.model.save_weights('best_baseline.weights')
-        print('acc: {}, best acc: {}'.format(acc, self.best_acc))
-
-
 if __name__ == '__main__':
     # pretrain bert use task data
     # 保存模型
@@ -322,8 +299,40 @@ if __name__ == '__main__':
                   optimizer=Adam(fine_tune_lr),
                   metrics=['sparse_categorical_accuracy'])
 
-    evaluator = Evaluator()
-    model.fit_generator(train_generator.forfit(),
-                        steps_per_epoch=len(train_generator),
-                        epochs=fine_tune_epochs,
-                        callbacks=[evaluator])
+    # evaluator = Evaluator()
+    callbacks = [
+        Evaluator(),
+        EarlyStopping(
+            monitor='val_acc',
+            patience=5,
+            verbose=1,
+            mode='max'),
+        ReduceLROnPlateau(
+            monitor='val_acc',
+            factor=0.5,
+            patience=2,
+            verbose=1,
+            min_lr=1e-5,
+            mode='max'),
+        # ModelCheckpoint(
+        #     f'best_model.h5',
+        #     monitor='val_acc',
+        #     save_weights_only=True,
+        #     save_best_only=True,
+        #     verbose=1,
+        #     mode='max'),
+    ]
+    model.fit_generator(
+        train_generator.forfit(),
+        steps_per_epoch=len(train_generator),
+        epochs=epochs,
+        # callbacks=[evaluator],
+        callbacks=callbacks
+    )
+    model.fit_generator(
+        train_generator.forfit(),
+        steps_per_epoch=len(train_generator),
+        epochs=fine_tune_epochs,
+        # callbacks=[evaluator],
+        callbacks=callbacks
+    )
