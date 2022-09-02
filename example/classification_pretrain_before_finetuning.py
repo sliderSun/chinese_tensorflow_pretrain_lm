@@ -7,7 +7,7 @@ best acc: 0.573 ， 比直接fine-tuning高1.+
 环境：tf1.X + tf.keras
 """
 import os
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau
+
 
 os.environ['TF_KERAS'] = '1'  # 必须使用tf.keras
 
@@ -22,6 +22,7 @@ from bert4keras.snippets import DataGenerator
 from bert4keras.tokenizers import Tokenizer
 from keras_preprocessing.sequence import pad_sequences
 from bert4keras.layers import *
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 from config import *
 from data_utils import load_data, Evaluator
 

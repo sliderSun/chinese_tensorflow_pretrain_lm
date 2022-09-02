@@ -4,7 +4,6 @@
 @File : classification_mixed_precision.py 
 @desc:
 """
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 """
 一行代码开启混合精度，加速训练
@@ -19,13 +18,14 @@ os.environ['TF_KERAS'] = '1'  # 使用tf.keras
 import numpy as np
 
 np.random.seed(42)
-from bert4keras.tokenizers import Tokenizer
 from bert4keras.models import build_transformer_model
+from bert4keras.tokenizers import Tokenizer
 from bert4keras.optimizers import Adam
 from bert4keras.layers import *
 from keras.models import Model
 from config import *
 from data_utils import load_data, data_generator, Evaluator
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 # 加载数据集
 train_data = load_data(
