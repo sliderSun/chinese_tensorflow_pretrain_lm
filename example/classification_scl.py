@@ -4,6 +4,7 @@
 @File : classification_scl.py 
 @desc:
 """
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau
 
 """
 ref: [Supervised Contrastive Learning for Pre-trained Language Model Fine-tuning](http://arxiv.org/abs/2011.01403)
@@ -186,12 +187,24 @@ train_model.compile(
     optimizer=Adam(lr)
 )
 
+early_stop = EarlyStopping(
+    monitor='val_acc',
+    patience=5,
+    verbose=1,
+    mode='max')
+reduce_lr = ReduceLROnPlateau(
+    monitor='val_acc',
+    factor=0.5,
+    patience=2,
+    verbose=1,
+    min_lr=1e-5,
+    mode='max')
 if __name__ == '__main__':
     evaluator = Evaluator()
     train_model.fit_generator(train_generator.forfit(),
                               steps_per_epoch=len(train_generator),
                               epochs=epochs,
-                              callbacks=[evaluator])
+                              callbacks=[evaluator, early_stop, reduce_lr])
 
     # tsne
     from sklearn.manifold import TSNE

@@ -12,7 +12,7 @@ tips: 1.只支持tf.train.Optimizer or tf.keras.optimizers.Optimizer继承来的
 训练速度能提高约30% 左右，244ms/step -> 168ms/step
 """
 import os
-
+os.environ['TF_AUTO_MIXED_PRECISION_GRAPH_REWRITE_IGNORE_PERFORMANCE'] = '1'
 os.environ['TF_KERAS'] = '1'  # 使用tf.keras
 
 import numpy as np
