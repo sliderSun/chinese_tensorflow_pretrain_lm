@@ -21,5 +21,4 @@ keras是一个友好的框架，通常我们都是基于tf后端使用，另外�
 因此，作者参考原训练过程地实现了基于keras的预训练脚本，而有了这个keras版之后，因为前面所述的一致性，所以我们可以很轻松地迁移到多GPU上训练，也可以很轻松地迁移到TPU上训练。
 
 ## 实验
-[![Typing SVG](https://readme-typing-svg.herokuapp.com?multiline=true&width=500&lines=文+本+分+类.++++++++++)](https://git.io/typing-svg)
-[](https://github.com/sliderSun/chinese_tensorflow_pretrain_lm/tree/main/example)
+[![Typing SVG](https://readme-typing-svg.herokuapp.com?multiline=true&width=500&lines=文+本+分+类.++++++++++)](https://github.com/sliderSun/chinese_tensorflow_pretrain_lm/tree/main/example)
