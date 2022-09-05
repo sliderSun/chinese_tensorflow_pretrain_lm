@@ -3,7 +3,6 @@
 @Author : sunshb10145 
 @File : classification_pretrain_before_finetuning.py 
 @desc:
-best acc: 0.573 ， 比直接fine-tuning高1.+
 环境：tf1.X + tf.keras
 """
 import os

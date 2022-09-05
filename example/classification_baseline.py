@@ -4,10 +4,8 @@
 @File : classification_baseline.py.py 
 @desc:
 tnews baseline:
-bert-12 acc: 56.6
 tnews: (https://github.com/CLUEbenchmark/CLUE)
 """
-import numpy as np
 from bert4keras.layers import *
 from bert4keras.models import build_transformer_model
 from bert4keras.optimizers import Adam

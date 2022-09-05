@@ -7,7 +7,6 @@
 """
 残差式attention RealFormer实验，由于结构与BERT上有差异，直接加载BERT权重后fine-tuning对比是不公平的，不过为了简单，
 所以选了pet这种“预训练”+“fine-tuning" 一体的模型结构实验，此外，为了让模型有更多的机会调整权重，epoch设置的大一些
-best acc: 56.73
 """
 
 from bert4keras.layers import *

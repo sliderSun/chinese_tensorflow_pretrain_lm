@@ -3,8 +3,7 @@
 @Author : sunshb10145 
 @File : classification_baseline.py.py 
 @desc:
-tnews baseline:
-bert-12 acc: 56.6
+tnews attention_adv:
 tnews: (https://github.com/CLUEbenchmark/CLUE)
 """
 from bert4keras.backend import search_layer
